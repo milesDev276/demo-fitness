@@ -3,6 +3,7 @@ import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/db'
 import type { PlannedExercise, WorkoutSet } from '../../db/types'
 import { addSet, deleteSet, getPreviousPerformance, listSetsForSession, updateSet } from './repository'
+import { RecommendationCard } from '../adaptive'
 
 interface ExerciseLoggerProps {
   sessionId: number
@@ -111,6 +112,15 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
           <p className="text-sm text-neutral-400">No previous data yet</p>
         )}
       </div>
+
+      {exercise && sets && sets.length === 0 && (
+        <RecommendationCard
+          exercise={exercise}
+          planned={planned}
+          sessionId={sessionId}
+          onApplyWeight={(weightKg) => patchDraft({ weight: weightKg })}
+        />
+      )}
 
       <div className="mt-5 grid grid-cols-2 gap-3">
         <div className="rounded-xl border border-neutral-200 p-3 text-center dark:border-neutral-800">
