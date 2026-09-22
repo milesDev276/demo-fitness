@@ -1,8 +1,9 @@
 import { db } from '../../db/db'
 import type { PlannedExercise, WorkoutPlan, WorkoutSet } from '../../db/types'
+import { todayLocalDate } from '../../utils/date'
 
 const nowIso = () => new Date().toISOString()
-const today = () => new Date().toISOString().slice(0, 10)
+const today = todayLocalDate
 
 // ---- Plans ----
 

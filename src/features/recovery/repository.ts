@@ -1,7 +1,8 @@
 import { db } from '../../db/db'
 import type { DailyCheckIn } from '../../db/types'
+import { todayLocalDate } from '../../utils/date'
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = todayLocalDate
 
 export function getTodayCheckIn() {
   return db.dailyCheckIns.where('date').equals(today()).first()
