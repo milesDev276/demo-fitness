@@ -38,19 +38,32 @@ export interface Exercise {
   isBodyweight: boolean
 }
 
+export interface PlannedExercise {
+  exerciseId: number
+  order: number
+  targetSets: number
+  minReps: number
+  maxReps: number
+  targetRIR: number
+}
+
 export interface WorkoutPlan {
   id?: number
   name: string
+  exercises: PlannedExercise[]
   createdAt: string
   updatedAt: string
 }
 
 export interface WorkoutSession {
   id?: number
-  planId?: number
+  planId: number
+  planName: string
   date: string
-  status: 'planned' | 'in_progress' | 'completed'
-  notes?: string
+  startTime: string
+  endTime?: string
+  durationMinutes?: number
+  status: 'in_progress' | 'completed'
 }
 
 export interface WorkoutSet {
