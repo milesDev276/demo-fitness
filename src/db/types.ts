@@ -91,6 +91,15 @@ export interface DailyCheckIn {
   soreness?: number
 }
 
+export interface Meal {
+  id: string
+  name: string
+  calories: number
+  proteinG: number
+  carbsG: number
+  fatG: number
+}
+
 export interface NutritionLog {
   id?: number
   date: string
@@ -98,5 +107,6 @@ export interface NutritionLog {
   proteinG?: number
   carbsG?: number
   fatG?: number
+  meals?: Meal[]
   notes?: string
 }
