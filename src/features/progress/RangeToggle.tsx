@@ -17,7 +17,8 @@ export function RangeToggle({ value, options, onChange }: RangeToggleProps) {
           key={opt.value}
           type="button"
           onClick={() => onChange(opt.value)}
-          className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-colors ${
+          aria-pressed={value === opt.value}
+          className={`min-h-9 rounded-md px-3 text-sm font-semibold transition-colors ${
             value === opt.value
               ? 'bg-white text-neutral-900 shadow-sm dark:bg-neutral-700 dark:text-white'
               : 'text-neutral-500 dark:text-neutral-400'

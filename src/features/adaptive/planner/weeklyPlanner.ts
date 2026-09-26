@@ -159,7 +159,9 @@ function buildDayPlan(
  * (calculateNextExerciseTarget), which runs later when the user logs against these targets.
  */
 export function generateWeeklyPlan(input: WeeklyPlannerInput): GeneratedWeekPlan {
-  const weekStart = addDays(mondayOnOrBefore(input.today), 7)
+  const planFor = input.planFor ?? 'next'
+  const thisWeekStart = mondayOnOrBefore(input.today)
+  const weekStart = planFor === 'this' ? thisWeekStart : addDays(thisWeekStart, 7)
   const weekEnd = addDays(weekStart, 6)
   const dateByWeekday = new Map<number, string>()
   for (let i = 0; i < 7; i++) {
@@ -167,9 +169,10 @@ export function generateWeeklyPlan(input: WeeklyPlannerInput): GeneratedWeekPlan
     dateByWeekday.set(new Date(`${date}T00:00:00`).getDay(), date)
   }
 
-  const orderedAvailable = Array.from(new Set(input.availableDays)).sort(
-    (a, b) => mondayFirstIndex(a) - mondayFirstIndex(b),
-  )
+  // Planning the current week can only use today and later — days already gone can't be trained.
+  const orderedAvailable = Array.from(new Set(input.availableDays))
+    .filter((wd) => planFor === 'next' || dateByWeekday.get(wd)! >= input.today)
+    .sort((a, b) => mondayFirstIndex(a) - mondayFirstIndex(b))
   const selectedWeekdays = selectSpacedItems(orderedAvailable, input.trainingDaysPerWeek)
   const selectedDates = selectedWeekdays.map((wd) => dateByWeekday.get(wd)!).sort()
 
@@ -198,7 +201,7 @@ export function generateWeeklyPlan(input: WeeklyPlannerInput): GeneratedWeekPlan
   const explanation: string[] = []
   explanation.push(
     days.length < input.trainingDaysPerWeek
-      ? `Only ${days.length} of your requested ${input.trainingDaysPerWeek} training days are available this week, so the plan has ${days.length} session${days.length === 1 ? '' : 's'}.`
+      ? `Only ${days.length} of your requested ${input.trainingDaysPerWeek} training days are available ${planFor === 'this' ? 'for the rest of this week' : 'next week'}, so the plan has ${days.length} session${days.length === 1 ? '' : 's'}.`
       : `${days.length} training day${days.length === 1 ? '' : 's'} scheduled based on your availability.`,
   )
   if (regions.includes('upper') && regions.includes('lower')) {
@@ -217,10 +220,11 @@ export function generateWeeklyPlan(input: WeeklyPlannerInput): GeneratedWeekPlan
   }
 
   return {
+    planFor,
     weekStart,
     weekEnd,
     requestedSessions: input.trainingDaysPerWeek,
-    availableDayCount: input.availableDays.length,
+    availableDayCount: orderedAvailable.length,
     days,
     explanation,
     recoveryLevel,

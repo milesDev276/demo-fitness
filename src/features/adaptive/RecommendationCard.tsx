@@ -3,24 +3,21 @@ import { useEffect, useRef, useState } from 'react'
 import type { Exercise, PlannedExercise } from '../../db/types'
 import { calculateNextExerciseTarget } from './engine'
 import { getLatestRecoverySignal, getRecentSessionsForExercise, targetFromPlannedExercise } from './repository'
-import type { AdaptiveAction } from './types'
 
 interface RecommendationCardProps {
   exercise: Exercise
   planned: PlannedExercise
   sessionId: number
+  /** The weight currently in the logger, so "Use" only shows when it differs from the suggestion. */
+  currentWeightKg: number
   onApplyWeight: (weightKg: number) => void
 }
 
-const ACTION_LABEL: Record<AdaptiveAction, string> = {
-  increase_load: 'Increase',
-  maintain: 'Maintain',
-  decrease_load: 'Reduce load',
-  reduce_volume: 'Reduce volume',
-  no_change: 'No recommendation yet',
-}
-
-export function RecommendationCard({ exercise, planned, sessionId, onApplyWeight }: RecommendationCardProps) {
+/**
+ * One compact "Suggested" line for the logger's info panel. The weight is pre-filled once on load, so
+ * the common case is just "Log set"; "Why?" reveals the plain-language reason on demand.
+ */
+export function RecommendationCard({ exercise, planned, sessionId, currentWeightKg, onApplyWeight }: RecommendationCardProps) {
   const [showWhy, setShowWhy] = useState(false)
 
   const recommendation = useLiveQuery(async () => {
@@ -36,7 +33,7 @@ export function RecommendationCard({ exercise, planned, sessionId, onApplyWeight
     })
   }, [exercise.id, planned, sessionId])
 
-  // Start the weight input at the recommendation once, so the common case is just "Log Set".
+  // Start the weight input at the recommendation once, so the common case is just "Log set".
   const appliedRef = useRef(false)
   const recommendedWeight = recommendation?.recommendedWeightKg ?? null
   useEffect(() => {
@@ -47,38 +44,41 @@ export function RecommendationCard({ exercise, planned, sessionId, onApplyWeight
 
   if (!recommendation || recommendation.action === 'no_change') return null
 
+  const { nextTarget } = recommendation
+  const reps = `${nextTarget.minReps}–${nextTarget.maxReps}`
+
   return (
-    <div className="mt-3 rounded-xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/30">
-      <div className="flex items-center justify-between">
-        <p className="text-[11px] font-semibold uppercase tracking-wide text-blue-500">
-          Recommended · {ACTION_LABEL[recommendation.action]}
-        </p>
-        <span className="text-[10px] uppercase text-blue-400">{recommendation.confidence} evidence</span>
-      </div>
-
-      <p className="mt-1 text-lg font-semibold text-neutral-900 dark:text-white">
-        {recommendation.recommendedWeightKg !== null
-          ? `${recommendation.recommendedWeightKg}kg × ${recommendation.nextTarget.minReps}–${recommendation.nextTarget.maxReps}`
-          : `${recommendation.nextTarget.minReps}–${recommendation.nextTarget.maxReps} reps`}
-        <span className="ml-2 text-sm font-normal text-neutral-500">· {recommendation.nextTarget.targetSets} sets</span>
+    <div>
+      <p className="text-xs font-semibold uppercase tracking-wide text-blue-700 dark:text-blue-400">Suggested today</p>
+      <p className="text-base font-semibold text-neutral-900 dark:text-white">
+        {recommendedWeight !== null ? `${recommendedWeight}kg × ${reps} reps` : `${reps} reps`}
+        <span className="ml-1.5 text-sm font-normal text-neutral-600 dark:text-neutral-400">· {nextTarget.targetSets} sets</span>
       </p>
-
-      <div className="mt-2 flex items-center gap-3">
-        {recommendation.recommendedWeightKg !== null && (
+      <div className="mt-1 flex items-center gap-4">
+        {recommendedWeight !== null && recommendedWeight !== currentWeightKg && (
           <button
             type="button"
-            onClick={() => onApplyWeight(recommendation.recommendedWeightKg!)}
-            className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white active:bg-blue-700"
+            onClick={() => onApplyWeight(recommendedWeight)}
+            className="min-h-9 rounded-lg bg-blue-600 px-3 text-sm font-semibold text-white active:bg-blue-700"
           >
-            Use {recommendation.recommendedWeightKg}kg
+            Use {recommendedWeight}kg
           </button>
         )}
-        <button type="button" onClick={() => setShowWhy((v) => !v)} className="text-xs font-medium text-blue-500">
+        <button
+          type="button"
+          onClick={() => setShowWhy((v) => !v)}
+          aria-expanded={showWhy}
+          className="min-h-9 text-sm font-medium text-blue-700 dark:text-blue-400"
+        >
           {showWhy ? 'Hide why' : 'Why?'}
         </button>
       </div>
-
-      {showWhy && <p className="mt-2 text-xs text-blue-700 dark:text-blue-300">{recommendation.reason}</p>}
+      {showWhy && (
+        <p className="mt-1 text-sm text-neutral-700 dark:text-neutral-300">
+          {recommendation.reason}
+          {recommendation.confidence === 'limited' && ' (Based on limited history.)'}
+        </p>
+      )}
     </div>
   )
 }

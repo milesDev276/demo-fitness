@@ -1,7 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
+import { InfoTip } from '../../components/InfoTip'
 import { formatCompactDate } from '../../utils/date'
+import { formatSet } from '../../utils/format'
 import { summarizeStrength } from './calculations'
 import { getSetsForExercise, listExercisesWithHistory } from './repository'
 
@@ -22,11 +24,11 @@ export function StrengthProgressCard() {
 
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Strength</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Strength</h3>
 
       {!exercises ? null : exercises.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-400">
-          Not enough workout history yet. Complete a few more sessions to see progression.
+        <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
+          No strength data yet. Complete a workout and your lifts will show up here.
         </p>
       ) : (
         <>
@@ -44,7 +46,7 @@ export function StrengthProgressCard() {
 
           {summary && summary.recent.length > 0 && (
             <>
-              {summary.recent.length >= 2 && (
+              {summary.recent.length >= 2 && summary.recent.some((r) => r.set.weightKg > 0) && (
                 <div className="mt-3 h-28">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart
@@ -64,11 +66,11 @@ export function StrengthProgressCard() {
               )}
 
               <div className="mt-3">
-                <p className="text-[11px] uppercase text-neutral-400">Recent</p>
+                <p className="text-xs uppercase text-neutral-500">Recent</p>
                 <div className="mt-1 space-y-0.5">
                   {summary.recent.map((r) => (
                     <p key={r.date} className="text-sm text-neutral-700 dark:text-neutral-300">
-                      {r.set.weightKg}kg × {r.set.reps}
+                      {formatSet(r.set.weightKg, r.set.reps)}
                     </p>
                   ))}
                 </div>
@@ -76,12 +78,17 @@ export function StrengthProgressCard() {
 
               {summary.best && (
                 <div className="mt-3 border-t border-neutral-100 pt-3 dark:border-neutral-900">
-                  <p className="text-[11px] uppercase text-neutral-400">Best</p>
+                  <p className="text-xs uppercase text-neutral-500">Best</p>
                   <p className="text-sm font-semibold text-neutral-900 dark:text-white">
-                    {summary.best.weightKg}kg × {summary.best.reps}
+                    {formatSet(summary.best.weightKg, summary.best.reps)}
                   </p>
-                  {summary.estimated1RM && (
-                    <p className="mt-0.5 text-xs text-neutral-400">Estimated 1RM: ~{summary.estimated1RM}kg</p>
+                  {summary.estimated1RM !== null && summary.estimated1RM > 0 && (
+                    <p className="mt-0.5 text-sm text-neutral-600 dark:text-neutral-400">
+                      Estimated max for 1 rep: ~{summary.estimated1RM}kg
+                      <InfoTip term="estimated max">
+                        A calculated guess at the heaviest weight you could lift once, based on your best set. It is not a test — no need to try it.
+                      </InfoTip>
+                    </p>
                   )}
                 </div>
               )}

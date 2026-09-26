@@ -19,7 +19,7 @@ export function PersonalCard() {
 
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Personal</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Personal</h2>
 
       <div className="mt-3 grid grid-cols-2 gap-3">
         <NumberField label="Age" value={profile.age} min={10} max={100} onCommit={(age) => patch({ age })} />
@@ -27,7 +27,7 @@ export function PersonalCard() {
       </div>
 
       <div className="mt-3">
-        <span className="text-[11px] uppercase text-neutral-400">Sex</span>
+        <span className="text-xs uppercase text-neutral-500">Sex</span>
         <div className="mt-1 flex gap-1.5">
           {(['male', 'female', 'other'] as const).map((value) => (
             <button
@@ -48,9 +48,9 @@ export function PersonalCard() {
       </div>
 
       <div className="mt-3">
-        <span className="text-[11px] uppercase text-neutral-400">Current weight</span>
+        <span className="text-xs uppercase text-neutral-500">Current weight</span>
         <p className="mt-1 text-lg font-semibold text-neutral-900 dark:text-white">{displayWeight} kg</p>
-        <p className="mt-0.5 text-xs text-neutral-400">
+        <p className="mt-0.5 text-xs text-neutral-500">
           {currentWeight !== undefined
             ? 'From your most recent weight log on Today.'
             : 'Starting estimate — log your weight on Today to keep this current.'}

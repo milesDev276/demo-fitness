@@ -45,8 +45,8 @@ export function DataCard() {
 
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Data</h2>
-      <p className="mt-1 text-xs text-neutral-400">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Data</h2>
+      <p className="mt-1 text-xs text-neutral-500">
         Export includes your profile, workouts, and logs as JSON. Body photos are not included.
       </p>
 
