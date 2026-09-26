@@ -2,6 +2,9 @@ import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/db'
 import type { Exercise, PlannedExercise, WorkoutPlan } from '../../db/types'
+import { InfoTip } from '../../components/InfoTip'
+import { NumberField } from '../../components/NumberField'
+import { safely } from '../../utils/safely'
 import { createPlan, deletePlan, updatePlan } from './repository'
 import { ExercisePicker } from './ExercisePicker'
 
@@ -56,19 +59,14 @@ export function PlanEditor({ plan, onDone }: PlanEditorProps) {
   async function handleSave() {
     const trimmedName = name.trim()
     if (!trimmedName || exercises.length === 0) return
-    if (plan?.id) {
-      await updatePlan(plan.id, trimmedName, exercises)
-    } else {
-      await createPlan(trimmedName, exercises)
-    }
-    onDone()
+    const saved = await safely(() => (plan?.id ? updatePlan(plan.id, trimmedName, exercises) : createPlan(trimmedName, exercises)))
+    if (saved) onDone()
   }
 
   async function handleDelete() {
     if (!plan?.id) return
     if (!confirm(`Delete "${plan.name}"?`)) return
-    await deletePlan(plan.id)
-    onDone()
+    if (await safely(() => deletePlan(plan.id!), "We couldn't delete this workout. Please try again.")) onDone()
   }
 
   const canSave = name.trim().length > 0 && exercises.length > 0
@@ -100,7 +98,14 @@ export function PlanEditor({ plan, onDone }: PlanEditorProps) {
         className="mt-4 w-full rounded-lg border border-neutral-200 bg-neutral-50 px-3 py-2.5 text-base text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
       />
 
-      <div className="mt-6 space-y-3">
+      <p className="mt-2 text-sm text-neutral-600 dark:text-neutral-400">
+        Set targets for each exercise.
+        <InfoTip term="RIR">
+          RIR = Reps In Reserve: how many more reps you could still do at the end of a set. 2 is a good default — hard, but not to failure.
+        </InfoTip>
+      </p>
+
+      <div className="mt-4 space-y-3">
         {exercises.map((planned, index) => {
           const exercise = exerciseMap.get(planned.exerciseId)
           return (
@@ -122,7 +127,7 @@ export function PlanEditor({ plan, onDone }: PlanEditorProps) {
                     type="button"
                     onClick={() => moveExercise(index, -1)}
                     disabled={index === 0}
-                    className="h-8 w-8 rounded-md border border-neutral-200 text-neutral-500 disabled:opacity-30 dark:border-neutral-800"
+                    className="h-10 w-10 rounded-md border border-neutral-200 text-neutral-500 disabled:opacity-30 dark:border-neutral-800"
                     aria-label="Move up"
                   >
                     ↑
@@ -131,7 +136,7 @@ export function PlanEditor({ plan, onDone }: PlanEditorProps) {
                     type="button"
                     onClick={() => moveExercise(index, 1)}
                     disabled={index === exercises.length - 1}
-                    className="h-8 w-8 rounded-md border border-neutral-200 text-neutral-500 disabled:opacity-30 dark:border-neutral-800"
+                    className="h-10 w-10 rounded-md border border-neutral-200 text-neutral-500 disabled:opacity-30 dark:border-neutral-800"
                     aria-label="Move down"
                   >
                     ↓
@@ -139,7 +144,7 @@ export function PlanEditor({ plan, onDone }: PlanEditorProps) {
                   <button
                     type="button"
                     onClick={() => removeExercise(planned.exerciseId)}
-                    className="h-8 w-8 rounded-md border border-red-200 text-red-500 dark:border-red-900"
+                    className="h-10 w-10 rounded-md border border-red-200 text-red-500 dark:border-red-900"
                     aria-label="Remove"
                   >
                     ×
@@ -147,55 +152,11 @@ export function PlanEditor({ plan, onDone }: PlanEditorProps) {
                 </div>
               </div>
 
-              <div className="mt-3 grid grid-cols-4 gap-2 text-center">
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] uppercase text-neutral-400">Sets</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={planned.targetSets}
-                    onChange={(e) =>
-                      updateTarget(planned.exerciseId, { targetSets: Number(e.target.value) || 1 })
-                    }
-                    className="w-full rounded-md border border-neutral-200 bg-neutral-50 py-1.5 text-center text-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] uppercase text-neutral-400">Min</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={planned.minReps}
-                    onChange={(e) =>
-                      updateTarget(planned.exerciseId, { minReps: Number(e.target.value) || 1 })
-                    }
-                    className="w-full rounded-md border border-neutral-200 bg-neutral-50 py-1.5 text-center text-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] uppercase text-neutral-400">Max</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={planned.maxReps}
-                    onChange={(e) =>
-                      updateTarget(planned.exerciseId, { maxReps: Number(e.target.value) || 1 })
-                    }
-                    className="w-full rounded-md border border-neutral-200 bg-neutral-50 py-1.5 text-center text-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
-                  />
-                </label>
-                <label className="flex flex-col gap-1">
-                  <span className="text-[11px] uppercase text-neutral-400">RIR</span>
-                  <input
-                    type="number"
-                    min={0}
-                    value={planned.targetRIR}
-                    onChange={(e) =>
-                      updateTarget(planned.exerciseId, { targetRIR: Number(e.target.value) || 0 })
-                    }
-                    className="w-full rounded-md border border-neutral-200 bg-neutral-50 py-1.5 text-center text-sm dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
-                  />
-                </label>
+              <div className="mt-3 grid grid-cols-4 gap-2">
+                <NumberField compact label="Sets" min={1} max={12} value={planned.targetSets} onCommit={(targetSets) => updateTarget(planned.exerciseId, { targetSets })} />
+                <NumberField compact label="Reps from" min={1} max={50} value={planned.minReps} onCommit={(minReps) => updateTarget(planned.exerciseId, { minReps, maxReps: Math.max(minReps, planned.maxReps) })} />
+                <NumberField compact label="Reps to" min={1} max={50} value={planned.maxReps} onCommit={(maxReps) => updateTarget(planned.exerciseId, { maxReps, minReps: Math.min(maxReps, planned.minReps) })} />
+                <NumberField compact label="RIR" min={0} max={5} value={planned.targetRIR} onCommit={(targetRIR) => updateTarget(planned.exerciseId, { targetRIR })} />
               </div>
             </div>
           )

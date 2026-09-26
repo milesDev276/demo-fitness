@@ -58,7 +58,7 @@ export function ExercisePicker({ excludeIds, onPick, onClose }: ExercisePickerPr
           </li>
         ))}
         {exercises && filtered.length === 0 && (
-          <li className="px-4 py-6 text-center text-sm text-neutral-400">No exercises found.</li>
+          <li className="px-4 py-6 text-center text-sm text-neutral-500">No exercises found.</li>
         )}
       </ul>
     </div>

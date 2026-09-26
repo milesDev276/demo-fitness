@@ -57,10 +57,10 @@ export function ProfileCard() {
 
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Training Setup</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Training Setup</h2>
 
       <div className="mt-3">
-        <p className="text-[11px] uppercase text-neutral-400">Available training days</p>
+        <p className="text-xs uppercase text-neutral-500">Days you can train</p>
         <div className="mt-2 flex flex-wrap gap-1.5">
           {DAY_LABELS.map(({ value, label }) => {
             const active = profile.availableDays.includes(value)
@@ -81,8 +81,8 @@ export function ProfileCard() {
             )
           })}
         </div>
-        <p className="mt-1 text-xs text-neutral-400">
-          {profile.availableDays.length} day{profile.availableDays.length === 1 ? '' : 's'} available this week
+        <p className="mt-1 text-xs text-neutral-500">
+          {profile.availableDays.length} day{profile.availableDays.length === 1 ? '' : 's'} you can usually train. FitFlow schedules up to {profile.trainingDaysPerWeek} of them each week.
         </p>
       </div>
 
@@ -105,7 +105,7 @@ export function ProfileCard() {
       </div>
 
       <div className="mt-4">
-        <div className="flex items-center justify-between text-[11px] uppercase text-neutral-400">
+        <div className="flex items-center justify-between text-xs uppercase text-neutral-500">
           <span>Muscular {muscularPercent}%</span>
           <span>Athletic {100 - muscularPercent}%</span>
         </div>
@@ -125,7 +125,7 @@ export function ProfileCard() {
       </div>
 
       <div className="mt-4">
-        <p className="text-[11px] uppercase text-neutral-400">Experience</p>
+        <p className="text-xs uppercase text-neutral-500">Experience</p>
         <div className="mt-2 flex gap-1.5">
           {EXPERIENCE_OPTIONS.map(({ value, label }) => (
             <button
@@ -146,7 +146,7 @@ export function ProfileCard() {
       </div>
 
       <div className="mt-4">
-        <p className="text-[11px] uppercase text-neutral-400">Equipment access</p>
+        <p className="text-xs uppercase text-neutral-500">Equipment access</p>
         <div className="mt-2 flex gap-1.5">
           {EQUIPMENT_OPTIONS.map(({ value, label }) => {
             const active = profile.equipment.includes(value)
@@ -167,7 +167,7 @@ export function ProfileCard() {
             )
           })}
         </div>
-        <p className="mt-1 text-xs text-neutral-400">The weekly planner only picks exercises you can actually do.</p>
+        <p className="mt-1 text-xs text-neutral-500">The weekly planner only picks exercises you can actually do.</p>
       </div>
     </section>
   )

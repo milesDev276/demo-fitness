@@ -49,9 +49,14 @@ export interface PlannerHistorySession {
   sets: PlannerHistorySet[]
 }
 
+/** Which Monday-started week to plan: the remaining days of the current week, or the following week. */
+export type PlanTarget = 'this' | 'next'
+
 export interface WeeklyPlannerInput {
   /** Local ISO date (yyyy-mm-dd) "today" is generated relative to. */
   today: string
+  /** Defaults to 'next'. 'this' only schedules days from today onward. */
+  planFor?: PlanTarget
   /** 0 = Sunday .. 6 = Saturday. */
   availableDays: number[]
   trainingDaysPerWeek: number
@@ -81,6 +86,7 @@ export interface GeneratedDayPlan {
 }
 
 export interface GeneratedWeekPlan {
+  planFor: PlanTarget
   weekStart: string
   weekEnd: string
   requestedSessions: number

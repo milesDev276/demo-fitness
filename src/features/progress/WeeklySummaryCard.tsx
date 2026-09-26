@@ -71,10 +71,10 @@ export function WeeklySummaryCard() {
 
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">This week</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">This week</h3>
 
       {!hasAnyData ? (
-        <p className="mt-3 text-sm text-neutral-400">
+        <p className="mt-3 text-sm text-neutral-500">
           Not enough data yet this week. Keep logging to see your weekly summary.
         </p>
       ) : (
@@ -116,10 +116,10 @@ export function WeeklySummaryCard() {
 function SummaryRow({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="flex items-baseline justify-between">
-      <p className="text-[11px] uppercase text-neutral-400">{label}</p>
+      <p className="text-xs uppercase text-neutral-500">{label}</p>
       <p className="text-sm font-semibold text-neutral-900 dark:text-white">
         {value}
-        {sub && <span className="ml-1.5 font-normal text-neutral-400">{sub}</span>}
+        {sub && <span className="ml-1.5 font-normal text-neutral-500">{sub}</span>}
       </p>
     </div>
   )

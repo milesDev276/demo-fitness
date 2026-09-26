@@ -1,83 +1,82 @@
-import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { QuickField } from '../../components/QuickField'
+import { SectionHeader } from '../../components/SectionHeader'
 import { safely } from '../../utils/safely'
-import { getTodayCheckIn, upsertCheckIn } from './repository'
+import { getPreviousSleepHours, getTodayCheckIn, upsertCheckIn } from './repository'
 
 const SCALE = Array.from({ length: 10 }, (_, i) => i + 1)
 
 export function RecoveryCard() {
   const checkIn = useLiveQuery(() => getTodayCheckIn(), [])
-  const [sleepOverride, setSleepOverride] = useState<string | null>(null)
+  const previousSleep = useLiveQuery(() => getPreviousSleepHours(), [])
 
-  const sleep = sleepOverride ?? (checkIn?.sleepHours !== undefined ? String(checkIn.sleepHours) : '')
-
-  async function commitSleep() {
-    const value = sleep === '' ? undefined : Number(sleep)
-    if (value !== undefined && Number.isNaN(value)) return
-    if (await safely(() => upsertCheckIn({ sleepHours: value }))) setSleepOverride(null)
-  }
+  const logged = [checkIn?.sleepHours, checkIn?.energy, checkIn?.soreness].filter((v) => v !== undefined).length
+  const status = logged === 0 ? 'Not logged yet' : logged === 3 ? 'Done' : `${logged} of 3 logged`
 
   return (
-    <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Recovery</h2>
+    <section id="log-recovery" className="py-4">
+      <SectionHeader title="Recovery" status={status} />
 
-      <label className="mt-3 block max-w-35">
-        <span className="text-[11px] uppercase text-neutral-400">Sleep (hours)</span>
-        <input
-          type="number"
-          inputMode="decimal"
+      <div className="mt-3 max-w-48">
+        <QuickField
+          label="Sleep (hours)"
           step="0.5"
-          value={sleep}
-          onChange={(e) => setSleepOverride(e.target.value)}
-          onBlur={commitSleep}
-          placeholder="—"
-          className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-lg font-semibold text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
+          value={checkIn?.sleepHours}
+          placeholder={previousSleep !== undefined ? String(previousSleep) : '—'}
+          onSave={(sleepHours) => safely(() => upsertCheckIn({ sleepHours }))}
         />
-      </label>
-
-      <div className="mt-3">
-        <p className="text-[11px] uppercase text-neutral-400">Energy</p>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {SCALE.map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => safely(() => upsertCheckIn({ energy: value }))}
-              aria-pressed={checkIn?.energy === value}
-              aria-label={`Energy ${value} out of 10`}
-              className={`h-10 w-10 rounded-full text-sm font-semibold ${
-                checkIn?.energy === value
-                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
-              }`}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
       </div>
 
-      <div className="mt-3">
-        <p className="text-[11px] uppercase text-neutral-400">Soreness</p>
-        <div className="mt-1 flex flex-wrap gap-1.5">
-          {SCALE.map((value) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => safely(() => upsertCheckIn({ soreness: value }))}
-              aria-pressed={checkIn?.soreness === value}
-              aria-label={`Soreness ${value} out of 10`}
-              className={`h-10 w-10 rounded-full text-sm font-semibold ${
-                checkIn?.soreness === value
-                  ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
-                  : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
-              }`}
-            >
-              {value}
-            </button>
-          ))}
-        </div>
-      </div>
+      <ScalePicker
+        label="Energy"
+        hint="1 = drained · 10 = great"
+        selected={checkIn?.energy}
+        onPick={(energy) => safely(() => upsertCheckIn({ energy }))}
+      />
+      <ScalePicker
+        label="Soreness"
+        hint="1 = none · 10 = very sore"
+        selected={checkIn?.soreness}
+        onPick={(soreness) => safely(() => upsertCheckIn({ soreness }))}
+      />
     </section>
+  )
+}
+
+function ScalePicker({
+  label,
+  hint,
+  selected,
+  onPick,
+}: {
+  label: string
+  hint: string
+  selected: number | undefined
+  onPick: (value: number) => void
+}) {
+  return (
+    <div className="mt-4">
+      <p className="text-xs uppercase text-neutral-500">
+        {label} <span className="normal-case">· {hint}</span>
+      </p>
+      <div role="group" aria-label={label} className="mt-1.5 grid grid-cols-10 gap-1">
+        {SCALE.map((value) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onPick(value)}
+            aria-pressed={selected === value}
+            aria-label={`${label} ${value} out of 10`}
+            className={`h-11 rounded-lg text-sm font-semibold ${
+              selected === value
+                ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
+                : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'
+            }`}
+          >
+            {value}
+          </button>
+        ))}
+      </div>
+    </div>
   )
 }
