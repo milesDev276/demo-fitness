@@ -6,6 +6,7 @@ import { NutritionProgressCard } from '../features/progress/NutritionProgressCar
 import { StrengthProgressCard } from '../features/progress/StrengthProgressCard'
 import { WeeklySummaryCard } from '../features/progress/WeeklySummaryCard'
 import { listWaistPoints, listWeightPoints } from '../features/progress/repository'
+import { PhotosSection } from '../features/photos/PhotosSection'
 
 const WEIGHT_RANGES = [
   { value: '7', label: '7D' },
@@ -44,6 +45,10 @@ export function ProgressPage() {
 
       <Section title="Strength">
         <StrengthProgressCard />
+      </Section>
+
+      <Section title="Photos">
+        <PhotosSection />
       </Section>
 
       <Section title="Cardio">

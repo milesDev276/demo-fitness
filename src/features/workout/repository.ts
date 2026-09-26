@@ -78,6 +78,31 @@ export function getSession(sessionId: number) {
   return db.workoutSessions.get(sessionId)
 }
 
+export function getSessionsForDate(date: string) {
+  return db.workoutSessions.where('date').equals(date).toArray()
+}
+
+/** The plan scheduled for a given date by the weekly planner (Phase 5), if any. */
+export function getPlanForDate(date: string) {
+  return db.workoutPlans.where('scheduledDate').equals(date).first()
+}
+
+export interface SessionSummary {
+  exerciseCount: number
+  setCount: number
+  volumeKg: number
+}
+
+export async function getSessionSummary(sessionId: number): Promise<SessionSummary> {
+  const sets = await db.workoutSets.where('sessionId').equals(sessionId).toArray()
+  const exerciseIds = new Set(sets.map((s) => s.exerciseId))
+  return {
+    exerciseCount: exerciseIds.size,
+    setCount: sets.length,
+    volumeKg: Math.round(sets.reduce((sum, s) => sum + s.weightKg * s.reps, 0)),
+  }
+}
+
 // ---- Sets ----
 
 export function listSetsForSession(sessionId: number) {

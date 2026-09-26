@@ -1,5 +1,5 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { Exercise, PlannedExercise } from '../../db/types'
 import { calculateNextExerciseTarget } from './engine'
 import { getLatestRecoverySignal, getRecentSessionsForExercise, targetFromPlannedExercise } from './repository'
@@ -35,6 +35,15 @@ export function RecommendationCard({ exercise, planned, sessionId, onApplyWeight
       recovery,
     })
   }, [exercise.id, planned, sessionId])
+
+  // Start the weight input at the recommendation once, so the common case is just "Log Set".
+  const appliedRef = useRef(false)
+  const recommendedWeight = recommendation?.recommendedWeightKg ?? null
+  useEffect(() => {
+    if (appliedRef.current || recommendedWeight === null) return
+    appliedRef.current = true
+    onApplyWeight(recommendedWeight)
+  }, [recommendedWeight, onApplyWeight])
 
   if (!recommendation || recommendation.action === 'no_change') return null
 

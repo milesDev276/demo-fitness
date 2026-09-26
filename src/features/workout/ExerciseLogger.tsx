@@ -1,9 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/db'
+import { safely } from '../../utils/safely'
 import type { PlannedExercise, WorkoutSet } from '../../db/types'
 import { addSet, deleteSet, getPreviousPerformance, listSetsForSession, updateSet } from './repository'
 import { RecommendationCard } from '../adaptive'
+import { RestTimer } from './RestTimer'
 
 interface ExerciseLoggerProps {
   sessionId: number
@@ -18,6 +20,8 @@ interface Draft {
 }
 
 const RIR_OPTIONS = [0, 1, 2, 3, 4]
+/** Matches the 60-90s rest window typical for accessory/compound work at this rep range (doc #21). */
+const DEFAULT_REST_SECONDS = 90
 
 export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerProps) {
   const exercise = useLiveQuery(() => db.exercises.get(planned.exerciseId), [planned.exerciseId])
@@ -32,6 +36,7 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
 
   const [editingSetId, setEditingSetId] = useState<number | null>(null)
   const [override, setOverride] = useState<Draft | null>(null)
+  const [restKey, setRestKey] = useState<number | null>(null)
 
   const defaults: Draft = useMemo(() => {
     if (sets && sets.length > 0) {
@@ -44,26 +49,42 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
     return { weight: 0, reps: planned.maxReps, rir: planned.targetRIR }
   }, [sets, previous, planned.maxReps, planned.targetRIR])
 
+  const defaultsRef = useRef(defaults)
+  useEffect(() => {
+    defaultsRef.current = defaults
+  }, [defaults])
+
   const draft = override ?? defaults
 
   function patchDraft(changes: Partial<Draft>) {
     setOverride({ ...draft, ...changes })
   }
 
+  // Functional update + stable identity, so the recommendation card can apply its weight once on mount.
+  const applyWeight = useCallback(
+    (weight: number) => setOverride((current) => ({ ...(current ?? defaultsRef.current), weight })),
+    [],
+  )
+
   async function handleLogSet() {
-    await addSet({
-      sessionId,
-      exerciseId: planned.exerciseId,
-      weightKg: draft.weight,
-      reps: draft.reps,
-      rir: draft.rir,
-    })
+    const saved = await safely(() =>
+      addSet({
+        sessionId,
+        exerciseId: planned.exerciseId,
+        weightKg: draft.weight,
+        reps: draft.reps,
+        rir: draft.rir,
+      }),
+    )
+    if (!saved) return
     setOverride(null)
+    setRestKey((k) => (k ?? 0) + 1)
   }
 
   async function handleUpdateSet() {
     if (editingSetId === null) return
-    await updateSet(editingSetId, { weightKg: draft.weight, reps: draft.reps, rir: draft.rir })
+    const saved = await safely(() => updateSet(editingSetId, { weightKg: draft.weight, reps: draft.reps, rir: draft.rir }))
+    if (!saved) return
     setEditingSetId(null)
     setOverride(null)
   }
@@ -74,7 +95,7 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
   }
 
   async function handleDelete(id: number) {
-    await deleteSet(id)
+    if (!(await safely(() => deleteSet(id), "We couldn't delete this set. Please try again."))) return
     if (editingSetId === id) {
       setEditingSetId(null)
       setOverride(null)
@@ -109,7 +130,9 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
             </p>
           </>
         ) : (
-          <p className="text-sm text-neutral-400">No previous data yet</p>
+          <p className="text-sm text-neutral-400">
+            First time — pick a weight you could lift {planned.maxReps}+ times with about {planned.targetRIR} reps to spare.
+          </p>
         )}
       </div>
 
@@ -118,7 +141,7 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
           exercise={exercise}
           planned={planned}
           sessionId={sessionId}
-          onApplyWeight={(weightKg) => patchDraft({ weight: weightKg })}
+          onApplyWeight={applyWeight}
         />
       )}
 
@@ -129,6 +152,7 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
             <button
               type="button"
               onClick={() => patchDraft({ weight: Math.max(0, draft.weight - 2.5) })}
+              aria-label="Decrease weight"
               className="h-11 w-11 rounded-full bg-neutral-100 text-xl font-semibold text-neutral-700 active:bg-neutral-200 dark:bg-neutral-800 dark:text-white"
             >
               −
@@ -137,12 +161,14 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
               type="number"
               inputMode="decimal"
               value={draft.weight}
+              aria-label="Weight in kilograms"
               onChange={(e) => patchDraft({ weight: Number(e.target.value) || 0 })}
               className="w-16 bg-transparent text-center text-2xl font-bold text-neutral-900 dark:text-white"
             />
             <button
               type="button"
               onClick={() => patchDraft({ weight: draft.weight + 2.5 })}
+              aria-label="Increase weight"
               className="h-11 w-11 rounded-full bg-neutral-100 text-xl font-semibold text-neutral-700 active:bg-neutral-200 dark:bg-neutral-800 dark:text-white"
             >
               +
@@ -156,6 +182,7 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
             <button
               type="button"
               onClick={() => patchDraft({ reps: Math.max(0, draft.reps - 1) })}
+              aria-label="Decrease reps"
               className="h-11 w-11 rounded-full bg-neutral-100 text-xl font-semibold text-neutral-700 active:bg-neutral-200 dark:bg-neutral-800 dark:text-white"
             >
               −
@@ -164,12 +191,14 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
               type="number"
               inputMode="numeric"
               value={draft.reps}
+              aria-label="Reps"
               onChange={(e) => patchDraft({ reps: Number(e.target.value) || 0 })}
               className="w-16 bg-transparent text-center text-2xl font-bold text-neutral-900 dark:text-white"
             />
             <button
               type="button"
               onClick={() => patchDraft({ reps: draft.reps + 1 })}
+              aria-label="Increase reps"
               className="h-11 w-11 rounded-full bg-neutral-100 text-xl font-semibold text-neutral-700 active:bg-neutral-200 dark:bg-neutral-800 dark:text-white"
             >
               +
@@ -186,6 +215,8 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
               key={value}
               type="button"
               onClick={() => patchDraft({ rir: value })}
+              aria-pressed={draft.rir === value}
+              aria-label={`RIR ${value}`}
               className={`h-10 w-10 rounded-full text-sm font-semibold ${
                 draft.rir === value
                   ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
@@ -226,6 +257,10 @@ export function ExerciseLogger({ sessionId, planned, onFinish }: ExerciseLoggerP
         >
           Log Set
         </button>
+      )}
+
+      {restKey !== null && (
+        <RestTimer key={restKey} seconds={DEFAULT_REST_SECONDS} onDone={() => setRestKey(null)} />
       )}
 
       <div className="mt-6 space-y-2">

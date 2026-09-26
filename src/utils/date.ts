@@ -24,6 +24,13 @@ export function startOfMonthLocal(dateStr: string): string {
   return toLocalDateString(new Date(date.getFullYear(), date.getMonth(), 1))
 }
 
+/** Monday of the week containing dateStr (weeks run Monday–Sunday). */
+export function mondayOnOrBefore(dateStr: string): string {
+  const day = parseLocalDate(dateStr).getDay()
+  const diffToMonday = day === 0 ? -6 : 1 - day
+  return addDays(dateStr, diffToMonday)
+}
+
 export function formatShortDate(dateStr: string): string {
   return parseLocalDate(dateStr).toLocaleDateString(undefined, {
     weekday: 'short',

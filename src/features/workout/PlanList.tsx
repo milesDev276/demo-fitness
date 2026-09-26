@@ -1,5 +1,7 @@
 import { useLiveQuery } from 'dexie-react-hooks'
 import type { WorkoutPlan } from '../../db/types'
+import { safely } from '../../utils/safely'
+import { formatShortDate } from '../../utils/date'
 import { listPlans, startSession } from './repository'
 
 interface PlanListProps {
@@ -7,23 +9,32 @@ interface PlanListProps {
   onCreatePlan: () => void
   onEditPlan: (plan: WorkoutPlan) => void
   onOpenHistory: () => void
+  onPlanWeek: () => void
 }
 
-export function PlanList({ onSessionStarted, onCreatePlan, onEditPlan, onOpenHistory }: PlanListProps) {
+export function PlanList({ onSessionStarted, onCreatePlan, onEditPlan, onOpenHistory, onPlanWeek }: PlanListProps) {
   const plans = useLiveQuery(() => listPlans(), [])
 
   async function handleStart(plan: WorkoutPlan) {
-    const sessionId = await startSession(plan)
-    onSessionStarted(sessionId)
+    let sessionId: number | undefined
+    await safely(async () => {
+      sessionId = await startSession(plan)
+    }, "We couldn't start this workout. Please try again.")
+    if (sessionId !== undefined) onSessionStarted(sessionId)
   }
 
   return (
     <div className="p-4 pb-24">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-neutral-900 dark:text-white">Workout</h1>
-        <button type="button" onClick={onOpenHistory} className="text-sm font-medium text-blue-600">
-          History
-        </button>
+        <div className="flex items-center gap-3">
+          <button type="button" onClick={onPlanWeek} className="text-sm font-medium text-blue-600">
+            Plan Week
+          </button>
+          <button type="button" onClick={onOpenHistory} className="text-sm font-medium text-blue-600">
+            History
+          </button>
+        </div>
       </div>
 
       <div className="mt-4 space-y-2">
@@ -36,6 +47,7 @@ export function PlanList({ onSessionStarted, onCreatePlan, onEditPlan, onOpenHis
               <p className="font-medium text-neutral-900 dark:text-white">{plan.name}</p>
               <p className="text-xs text-neutral-500 dark:text-neutral-400">
                 {plan.exercises.length} exercise{plan.exercises.length === 1 ? '' : 's'}
+                {plan.scheduledDate && ` · ${formatShortDate(plan.scheduledDate)}`}
               </p>
             </button>
             <button
