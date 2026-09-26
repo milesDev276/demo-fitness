@@ -5,7 +5,7 @@ import { getTodayNutritionLog } from '../features/nutrition/repository'
 import { getTodayCheckIn } from '../features/recovery/repository'
 import { getSessionsForDate } from '../features/workout/repository'
 
-/** A lightweight "did I log today?" indicator — not gamification, just a nudge toward missing data. */
+/** A lightweight "did I log today?" indicator — not gamification, just a nudge toward missing data. Tap a missing item to jump to it. */
 export function DailyChecklist() {
   const today = todayLocalDate()
 
@@ -15,29 +15,35 @@ export function DailyChecklist() {
   const checkIn = useLiveQuery(() => getTodayCheckIn(), [])
 
   const items = [
-    { label: 'Workout', done: sessions?.some((s) => s.status === 'completed') ?? false },
-    { label: 'Weight', done: bodyLog?.weightKg !== undefined },
-    { label: 'Nutrition', done: nutritionLog?.calories !== undefined || (nutritionLog?.meals?.length ?? 0) > 0 },
-    {
-      label: 'Recovery',
-      done: checkIn?.sleepHours !== undefined || checkIn?.energy !== undefined || checkIn?.soreness !== undefined,
-    },
+    { label: 'Workout', target: null, done: sessions?.some((s) => s.status === 'completed') ?? false },
+    { label: 'Recovery', target: 'log-recovery', done: checkIn?.sleepHours !== undefined || checkIn?.energy !== undefined || checkIn?.soreness !== undefined },
+    { label: 'Nutrition', target: 'log-nutrition', done: nutritionLog?.calories !== undefined || (nutritionLog?.meals?.length ?? 0) > 0 },
+    { label: 'Weight', target: 'log-body', done: bodyLog?.weightKg !== undefined },
   ]
 
+  function jumpTo(target: string | null) {
+    if (target) document.getElementById(target)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    else window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
   return (
-    <div className="flex flex-wrap gap-3">
-      {items.map(({ label, done }) => (
-        <span
+    <div className="grid grid-cols-4 gap-2" role="list" aria-label="Today's checklist">
+      {items.map(({ label, target, done }) => (
+        <button
           key={label}
-          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium ${
+          type="button"
+          role="listitem"
+          onClick={() => jumpTo(target)}
+          aria-label={`${label}: ${done ? 'done' : 'not done yet'}`}
+          className={`flex min-h-14 flex-col items-center justify-center gap-0.5 rounded-xl text-xs font-medium ${
             done
-              ? 'bg-green-100 text-green-700 dark:bg-green-950/40 dark:text-green-400'
-              : 'bg-neutral-100 text-neutral-400 dark:bg-neutral-900 dark:text-neutral-500'
+              ? 'bg-green-100 text-green-800 dark:bg-green-950/40 dark:text-green-400'
+              : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-900 dark:text-neutral-400'
           }`}
         >
-          <span>{done ? '✓' : '○'}</span>
+          <span aria-hidden="true">{done ? '✓' : '○'}</span>
           {label}
-        </span>
+        </button>
       ))}
     </div>
   )

@@ -20,3 +20,9 @@ export function upsertCheckIn(changes: Partial<Pick<DailyCheckIn, 'sleepHours' |
     }
   })
 }
+
+/** The most recent check-in before today, used to pre-suggest sleep. */
+export async function getPreviousSleepHours(): Promise<number | undefined> {
+  const recent = await db.dailyCheckIns.orderBy('date').reverse().limit(10).toArray()
+  return recent.find((c) => c.date !== today() && c.sleepHours !== undefined)?.sleepHours
+}

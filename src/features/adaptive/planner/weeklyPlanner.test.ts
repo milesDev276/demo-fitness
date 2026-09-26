@@ -158,3 +158,28 @@ describe('generateWeeklyPlan', () => {
     expect(recentSessions).toEqual(snapshot)
   })
 })
+
+describe('planning the current week', () => {
+  // baseInput().today is Tuesday 2026-09-22; the week runs Mon 09-21 – Sun 09-27.
+  it('plans next Monday’s week by default', () => {
+    expect(generateWeeklyPlan(baseInput()).weekStart).toBe('2026-09-28')
+  })
+
+  it('plans only today and later days when asked for this week', () => {
+    const result = generateWeeklyPlan(baseInput({ planFor: 'this' }))
+    expect(result.weekStart).toBe('2026-09-21')
+    expect(result.planFor).toBe('this')
+    // Available Mon, Tue, Thu, Sat — Monday has already passed.
+    expect(result.days.map((d) => d.date)).toEqual(['2026-09-22', '2026-09-24', '2026-09-26'])
+  })
+
+  it('says so when fewer sessions fit in the rest of the week', () => {
+    const result = generateWeeklyPlan(baseInput({ planFor: 'this' }))
+    expect(result.explanation.join(' ')).toMatch(/rest of this week/i)
+  })
+
+  it('returns no sessions when no available day is left this week', () => {
+    const result = generateWeeklyPlan(baseInput({ planFor: 'this', today: '2026-09-27', availableDays: [1, 2] }))
+    expect(result.days).toEqual([])
+  })
+})

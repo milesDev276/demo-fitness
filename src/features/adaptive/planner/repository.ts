@@ -1,11 +1,11 @@
 import { db } from '../../../db/db'
 import type { WorkoutPlan } from '../../../db/types'
 import { getProfile } from '../../profile/repository'
-import { todayLocalDate, addDays } from '../../../utils/date'
+import { todayLocalDate, addDays, mondayOnOrBefore } from '../../../utils/date'
 import { listCompletedSessionsSince } from '../../progress/repository'
 import { getLatestRecoverySignal } from '../repository'
 import { generateWeeklyPlan } from './weeklyPlanner'
-import type { GeneratedWeekPlan, PlannerHistorySession } from './types'
+import type { GeneratedWeekPlan, PlanTarget, PlannerHistorySession } from './types'
 
 /** Roughly 3 weeks — enough to judge recent volume/spacing without over-weighting one bad week. */
 const HISTORY_WINDOW_DAYS = 21
@@ -53,7 +53,27 @@ async function loadPreviousPlanExerciseIds(): Promise<number[]> {
   return Array.from(ids)
 }
 
-export async function buildWeeklyPlanPreview(): Promise<GeneratedWeekPlan> {
+/**
+ * Which week the planner should offer first. If the current week has no accepted plan and still has an
+ * available training day left (today or later), plan the rest of this week; otherwise plan next week.
+ */
+export async function getDefaultPlanTarget(): Promise<PlanTarget> {
+  const today = todayLocalDate()
+  const thisWeekStart = mondayOnOrBefore(today)
+  const [profile, thisWeekPlans] = await Promise.all([
+    getProfile(),
+    db.workoutPlans.where('weekStart').equals(thisWeekStart).toArray(),
+  ])
+  if (thisWeekPlans.some((p) => p.isGenerated)) return 'next'
+
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(thisWeekStart, i)
+    if (date >= today && profile.availableDays.includes(new Date(`${date}T00:00:00`).getDay())) return 'this'
+  }
+  return 'next'
+}
+
+export async function buildWeeklyPlanPreview(planFor: PlanTarget = 'next'): Promise<GeneratedWeekPlan> {
   const today = todayLocalDate()
   const [profile, exercises, recovery, recentSessions, previousPlanExerciseIds] = await Promise.all([
     getProfile(),
@@ -65,6 +85,7 @@ export async function buildWeeklyPlanPreview(): Promise<GeneratedWeekPlan> {
 
   return generateWeeklyPlan({
     today,
+    planFor,
     availableDays: profile.availableDays,
     trainingDaysPerWeek: profile.trainingDaysPerWeek,
     sessionDurationMinutes: profile.sessionDurationMinutes,

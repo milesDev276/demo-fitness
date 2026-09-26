@@ -22,6 +22,8 @@ interface MeasurementTrendCardProps {
   defaultRange: string
   fetchPoints: (startDate: string) => Promise<MeasurementPoint[]>
   emptyMessage: string
+  /** Optional shortcut shown with the empty message, e.g. "Log weight". */
+  emptyAction?: { label: string; onClick: () => void }
 }
 
 export function MeasurementTrendCard({
@@ -31,6 +33,7 @@ export function MeasurementTrendCard({
   defaultRange,
   fetchPoints,
   emptyMessage,
+  emptyAction,
 }: MeasurementTrendCardProps) {
   const [range, setRange] = useState(defaultRange)
   const startDate = useMemo(() => addDays(todayLocalDate(), -Number(range)), [range])
@@ -42,12 +45,19 @@ export function MeasurementTrendCard({
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">{title}</h3>
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">{title}</h3>
         <RangeToggle value={range} options={rangeOptions} onChange={setRange} />
       </div>
 
       {!summary ? null : summary.points.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-400">{emptyMessage}</p>
+        <div className="mt-3">
+          <p className="text-sm text-neutral-600 dark:text-neutral-400">{emptyMessage}</p>
+          {emptyAction && (
+            <button type="button" onClick={emptyAction.onClick} className="mt-1 min-h-10 text-sm font-semibold text-blue-700 dark:text-blue-400">
+              {emptyAction.label}
+            </button>
+          )}
+        </div>
       ) : (
         <>
           <p className="mt-2 text-2xl font-bold text-neutral-900 dark:text-white">
@@ -72,17 +82,17 @@ export function MeasurementTrendCard({
 
           <div className="mt-3 flex gap-6 border-t border-neutral-100 pt-3 dark:border-neutral-900">
             <div>
-              <p className="text-[11px] uppercase text-neutral-400">{rangeLabel} average</p>
+              <p className="text-xs uppercase text-neutral-500">{rangeLabel} average</p>
               <p className="text-sm font-semibold text-neutral-900 dark:text-white">
                 {summary.average !== null ? `${summary.average} ${unit}` : '—'}
               </p>
             </div>
             <div>
-              <p className="text-[11px] uppercase text-neutral-400">Change</p>
+              <p className="text-xs uppercase text-neutral-500">Change</p>
               <p className="text-sm font-semibold text-neutral-900 dark:text-white">
                 {summary.change !== null
                   ? `${summary.change > 0 ? '+' : ''}${summary.change} ${unit}`
-                  : 'Not enough data yet'}
+                  : 'Log again to see a change'}
               </p>
             </div>
           </div>

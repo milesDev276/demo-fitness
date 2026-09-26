@@ -1,89 +1,61 @@
-import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { QuickField } from '../../components/QuickField'
+import { SectionHeader } from '../../components/SectionHeader'
+import { formatShortDate } from '../../utils/date'
 import { safely } from '../../utils/safely'
 import { getTodayBodyLog, listRecentBodyLogs, upsertBodyLog } from './repository'
 
-function formatDate(date: string) {
-  return new Date(`${date}T00:00:00`).toLocaleDateString(undefined, {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-  })
-}
-
 export function BodyCard() {
   const todayLog = useLiveQuery(() => getTodayBodyLog(), [])
-  const recent = useLiveQuery(() => listRecentBodyLogs(5), [])
+  const recent = useLiveQuery(() => listRecentBodyLogs(6), [])
 
-  const [weightOverride, setWeightOverride] = useState<string | null>(null)
-  const [waistOverride, setWaistOverride] = useState<string | null>(null)
-
-  const weight = weightOverride ?? (todayLog?.weightKg !== undefined ? String(todayLog.weightKg) : '')
-  const waist = waistOverride ?? (todayLog?.waistCm !== undefined ? String(todayLog.waistCm) : '')
-
-  async function commitWeight() {
-    const value = weight === '' ? undefined : Number(weight)
-    if (value !== undefined && Number.isNaN(value)) return
-    if (await safely(() => upsertBodyLog({ weightKg: value }))) setWeightOverride(null)
-  }
-
-  async function commitWaist() {
-    const value = waist === '' ? undefined : Number(waist)
-    if (value !== undefined && Number.isNaN(value)) return
-    if (await safely(() => upsertBodyLog({ waistCm: value }))) setWaistOverride(null)
-  }
-
-  const olderEntries = recent?.filter((log) => log.id !== todayLog?.id) ?? []
+  const older = recent?.filter((log) => log.id !== todayLog?.id) ?? []
   // Remember the last logged values so today's entry starts from a familiar number.
-  const lastWeight = olderEntries.find((log) => log.weightKg !== undefined)?.weightKg
-  const lastWaist = olderEntries.find((log) => log.waistCm !== undefined)?.waistCm
+  const lastWeight = older.find((log) => log.weightKg !== undefined)?.weightKg
+  const lastWaist = older.find((log) => log.waistCm !== undefined)?.waistCm
 
   return (
-    <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Body</h2>
+    <section id="log-body" className="py-4">
+      <SectionHeader title="Body" status={todayLog?.weightKg !== undefined ? `${todayLog.weightKg} kg` : 'Not logged yet'} />
 
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <label className="block">
-          <span className="text-[11px] uppercase text-neutral-400">Weight (kg)</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.1"
-            value={weight}
-            onChange={(e) => setWeightOverride(e.target.value)}
-            onBlur={commitWeight}
-            placeholder={lastWeight !== undefined ? String(lastWeight) : '—'}
-            className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-lg font-semibold text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
-          />
-        </label>
-        <label className="block">
-          <span className="text-[11px] uppercase text-neutral-400">Waist (cm)</span>
-          <input
-            type="number"
-            inputMode="decimal"
-            step="0.1"
-            value={waist}
-            onChange={(e) => setWaistOverride(e.target.value)}
-            onBlur={commitWaist}
-            placeholder={lastWaist !== undefined ? String(lastWaist) : 'optional'}
-            className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-lg font-semibold text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
-          />
-        </label>
+      <div className="mt-3 max-w-48">
+        <QuickField
+          label="Weight (kg)"
+          step="0.1"
+          value={todayLog?.weightKg}
+          placeholder={lastWeight !== undefined ? String(lastWeight) : '—'}
+          onSave={(weightKg) => safely(() => upsertBodyLog({ weightKg }))}
+        />
       </div>
 
-      {olderEntries.length > 0 && (
-        <div className="mt-3 space-y-1 border-t border-neutral-100 pt-2 dark:border-neutral-900">
-          {olderEntries.map((log) => (
-            <div key={log.id} className="flex justify-between text-sm text-neutral-500 dark:text-neutral-400">
-              <span>{formatDate(log.date)}</span>
-              <span>
-                {log.weightKg !== undefined ? `${log.weightKg} kg` : '—'}
-                {log.waistCm !== undefined ? ` · ${log.waistCm} cm` : ''}
-              </span>
-            </div>
-          ))}
+      <details className="group mt-3">
+        <summary className="flex min-h-10 cursor-pointer list-none items-center justify-between [&::-webkit-details-marker]:hidden text-sm font-medium text-neutral-600 dark:text-neutral-300">
+          Waist &amp; recent weigh-ins
+          <span aria-hidden="true" className="text-neutral-500 transition-transform group-open:rotate-180">▾</span>
+        </summary>
+        <div className="mt-2 max-w-48">
+          <QuickField
+            label="Waist (cm)"
+            step="0.1"
+            value={todayLog?.waistCm}
+            placeholder={lastWaist !== undefined ? String(lastWaist) : 'optional'}
+            onSave={(waistCm) => safely(() => upsertBodyLog({ waistCm }))}
+          />
         </div>
-      )}
+        {older.length > 0 && (
+          <div className="mt-3 space-y-1">
+            {older.map((log) => (
+              <div key={log.id} className="flex justify-between text-sm text-neutral-600 dark:text-neutral-400">
+                <span>{formatShortDate(log.date)}</span>
+                <span>
+                  {log.weightKg !== undefined ? `${log.weightKg} kg` : '—'}
+                  {log.waistCm !== undefined ? ` · ${log.waistCm} cm` : ''}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </details>
     </section>
   )
 }

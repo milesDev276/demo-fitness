@@ -25,6 +25,11 @@ function playBeep() {
 
 function notifyRestDone() {
   playBeep()
+  try {
+    navigator.vibrate?.(200)
+  } catch {
+    // Vibration isn't available everywhere.
+  }
   if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
     try {
       new Notification('Rest complete', { body: 'Time for your next set.' })
@@ -40,57 +45,78 @@ function formatTime(totalSeconds: number): string {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
 }
 
+const BUTTON = 'min-h-9 rounded-lg px-3 text-sm font-semibold'
+
+/**
+ * A slim bar pinned to the top of the workout screens. Time is derived from an end timestamp, not from
+ * counting ticks, so it stays correct after the phone sleeps or the tab is throttled.
+ */
 export function RestTimer({ seconds, onDone }: RestTimerProps) {
-  const [remaining, setRemaining] = useState(seconds)
-  const [paused, setPaused] = useState(false)
+  const [endAt, setEndAt] = useState(() => Date.now() + seconds * 1000)
+  const [now, setNow] = useState(() => Date.now())
+  const [pausedRemaining, setPausedRemaining] = useState<number | null>(null)
   const notifiedRef = useRef(false)
 
-  useEffect(() => {
-    if (paused) return
-    if (remaining <= 0) {
-      if (!notifiedRef.current) {
-        notifiedRef.current = true
-        notifyRestDone()
-      }
-      return
-    }
-    const timer = setTimeout(() => setRemaining((r) => r - 1), 1000)
-    return () => clearTimeout(timer)
-  }, [remaining, paused])
-
+  const paused = pausedRemaining !== null
+  const remaining = paused ? pausedRemaining : Math.max(0, Math.ceil((endAt - now) / 1000))
   const isDone = remaining <= 0
 
-  return (
-    <div role="timer" aria-live="off" className="mt-3 rounded-xl border border-neutral-200 bg-neutral-50 p-3 text-center dark:border-neutral-800 dark:bg-neutral-900">
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-neutral-400">
-        {isDone ? 'Rest complete' : 'Rest'}
-      </p>
-      <p className="mt-1 text-3xl font-bold tabular-nums text-neutral-900 dark:text-white">{formatTime(Math.max(0, remaining))}</p>
+  useEffect(() => {
+    if (paused || isDone) return
+    const timer = setInterval(() => setNow(Date.now()), 250)
+    return () => clearInterval(timer)
+  }, [paused, isDone])
 
-      <div className="mt-2 flex justify-center gap-2">
+  useEffect(() => {
+    if (isDone && !notifiedRef.current) {
+      notifiedRef.current = true
+      notifyRestDone()
+    }
+  }, [isDone])
+
+  function togglePause() {
+    if (paused) {
+      setEndAt(Date.now() + pausedRemaining * 1000)
+      setNow(Date.now())
+      setPausedRemaining(null)
+    } else {
+      setPausedRemaining(remaining)
+    }
+  }
+
+  function addThirty() {
+    if (paused) setPausedRemaining(pausedRemaining + 30)
+    else {
+      // Re-arm the "done" notification if time is added after it fired.
+      notifiedRef.current = false
+      setEndAt(Math.max(endAt, Date.now()) + 30_000)
+      setNow(Date.now())
+    }
+  }
+
+  return (
+    <div
+      role="timer"
+      aria-label={isDone ? 'Rest complete' : `Rest, ${formatTime(remaining)} remaining`}
+      className={`sticky top-0 z-40 flex items-center justify-between gap-2 px-4 py-2 text-white ${
+        isDone ? 'bg-green-700' : 'bg-neutral-900 dark:bg-neutral-800'
+      }`}
+    >
+      <div className="leading-tight">
+        <p className="text-xs font-semibold uppercase tracking-wide text-neutral-300">{isDone ? 'Rest over' : paused ? 'Rest paused' : 'Rest'}</p>
+        <p className="text-2xl font-bold tabular-nums">{isDone ? 'Go!' : formatTime(remaining)}</p>
+      </div>
+
+      <div className="flex gap-2">
         {!isDone && (
-          <button
-            type="button"
-            onClick={() => setPaused((p) => !p)}
-            className="rounded-lg bg-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
-          >
+          <button type="button" onClick={togglePause} className={`${BUTTON} bg-white/15`}>
             {paused ? 'Resume' : 'Pause'}
           </button>
         )}
-        {!isDone && (
-          <button
-            type="button"
-            onClick={() => setRemaining((r) => r + 30)}
-            className="rounded-lg bg-neutral-200 px-3 py-1.5 text-xs font-semibold text-neutral-700 dark:bg-neutral-800 dark:text-neutral-200"
-          >
-            +30s
-          </button>
-        )}
-        <button
-          type="button"
-          onClick={onDone}
-          className="rounded-lg bg-neutral-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-white dark:text-neutral-900"
-        >
+        <button type="button" onClick={addThirty} className={`${BUTTON} bg-white/15`}>
+          +30s
+        </button>
+        <button type="button" onClick={onDone} className={`${BUTTON} bg-white text-neutral-900`}>
           {isDone ? 'Dismiss' : 'Skip'}
         </button>
       </div>

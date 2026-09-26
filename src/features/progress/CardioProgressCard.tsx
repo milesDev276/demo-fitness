@@ -18,12 +18,15 @@ export function CardioProgressCard() {
 
   const recent = history?.slice(-5) ?? []
 
+  // Not everyone logs cardio — don't show an empty section for it.
+  if (exercises && exercises.length === 0) return null
+
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
-      <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Cardio</h3>
+      <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Cardio</h3>
 
       {!exercises ? null : exercises.length === 0 ? (
-        <p className="mt-3 text-sm text-neutral-400">No cardio sessions logged yet.</p>
+        <p className="mt-3 text-sm text-neutral-500">No cardio sessions logged yet.</p>
       ) : (
         <>
           <select
@@ -45,10 +48,10 @@ export function CardioProgressCard() {
                 <span>{h.sets.map((s) => `${s.weightKg} × ${s.reps}`).join(', ')}</span>
               </div>
             ))}
-            {recent.length === 0 && <p className="text-sm text-neutral-400">No sessions logged yet.</p>}
+            {recent.length === 0 && <p className="text-sm text-neutral-500">No sessions logged yet.</p>}
           </div>
 
-          <p className="mt-3 border-t border-neutral-100 pt-2 text-xs text-neutral-400 dark:border-neutral-900">
+          <p className="mt-3 border-t border-neutral-100 pt-2 text-xs text-neutral-500 dark:border-neutral-900">
             Cardio is currently logged with the same weight/reps fields as strength exercises, so distance,
             duration, and pace aren't tracked yet. Structured cardio tracking is planned for a future phase.
           </p>

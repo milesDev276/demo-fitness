@@ -19,6 +19,7 @@ export function PhotosSection() {
   const [date, setDate] = useState(todayLocalDate())
   const [category, setCategory] = useState<PhotoCategory>('front')
   const [compareMode, setCompareMode] = useState(false)
+  const [showAdd, setShowAdd] = useState(false)
   const [beforeId, setBeforeId] = useState<number | null>(null)
   const [afterId, setAfterId] = useState<number | null>(null)
 
@@ -26,6 +27,7 @@ export function PhotosSection() {
     if (!file) return
     try {
       await addPhoto(date, category, file)
+      setShowAdd(false)
     } catch {
       useToastStore.getState().show("We couldn't save this photo. Please try again.")
     } finally {
@@ -50,26 +52,36 @@ export function PhotosSection() {
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-400">Photos</h3>
-        {photos && photos.length >= 2 && (
-          <button
-            type="button"
-            onClick={() => setCompareMode((v) => !v)}
-            className="text-xs font-medium text-blue-600"
-          >
-            {compareMode ? 'Done' : 'Compare'}
-          </button>
-        )}
+        <h3 className="text-sm font-semibold uppercase tracking-wide text-neutral-500">Photos</h3>
+        <div className="flex items-center gap-1">
+          {photos && photos.length >= 2 && (
+            <button
+              type="button"
+              onClick={() => setCompareMode((v) => !v)}
+              className="min-h-10 px-2 text-sm font-medium text-blue-700 dark:text-blue-400"
+            >
+              {compareMode ? 'Done' : 'Compare'}
+            </button>
+          )}
+          {!compareMode && (
+            <button
+              type="button"
+              onClick={() => setShowAdd((v) => !v)}
+              aria-expanded={showAdd}
+              className="min-h-10 px-2 text-sm font-medium text-blue-700 dark:text-blue-400"
+            >
+              {showAdd ? 'Cancel' : '+ Add photo'}
+            </button>
+          )}
+        </div>
       </div>
 
-      <p className="mt-1 text-xs text-neutral-400">
-        Stored only on this device. Never uploaded anywhere.
-      </p>
+      <p className="text-xs text-neutral-500">Stored only on this device. Never uploaded anywhere.</p>
 
-      {!compareMode && (
+      {showAdd && !compareMode && (
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="block">
-            <span className="text-[11px] uppercase text-neutral-400">Date</span>
+            <span className="text-xs uppercase text-neutral-500">Date</span>
             <input
               type="date"
               value={date}
@@ -78,7 +90,7 @@ export function PhotosSection() {
             />
           </label>
           <label className="block">
-            <span className="text-[11px] uppercase text-neutral-400">Category</span>
+            <span className="text-xs uppercase text-neutral-500">Category</span>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value as PhotoCategory)}
@@ -96,7 +108,7 @@ export function PhotosSection() {
             onClick={() => fileInputRef.current?.click()}
             className="rounded-lg bg-neutral-900 px-4 py-2 text-sm font-semibold text-white active:bg-neutral-800 dark:bg-white dark:text-neutral-900"
           >
-            + Add Photo
+            Choose photo
           </button>
           <input
             ref={fileInputRef}
@@ -110,7 +122,7 @@ export function PhotosSection() {
       )}
 
       {!photos ? null : photos.length === 0 ? (
-        <p className="mt-4 text-sm text-neutral-400">
+        <p className="mt-3 text-sm text-neutral-600 dark:text-neutral-400">
           No body photos yet. Add your first photo to compare physical changes over time.
         </p>
       ) : compareMode ? (
@@ -137,11 +149,11 @@ function PhotoTile({ photo, onDelete }: { photo: BodyPhoto; onDelete: () => void
         type="button"
         onClick={onDelete}
         aria-label="Delete photo"
-        className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-black/60 text-xs font-semibold text-white"
+        className="absolute right-1 top-1 flex h-9 w-9 items-center justify-center rounded-full bg-black/60 text-xs font-semibold text-white"
       >
         ×
       </button>
-      <p className="bg-white/90 px-1.5 py-0.5 text-[10px] capitalize text-neutral-600 dark:bg-neutral-900/90 dark:text-neutral-300">
+      <p className="bg-white/90 px-1.5 py-0.5 text-xs capitalize text-neutral-600 dark:bg-neutral-900/90 dark:text-neutral-300">
         {formatShortDate(photo.date)} · {photo.category}
       </p>
     </div>
@@ -163,7 +175,7 @@ function ComparePicker({
 }) {
   return (
     <div>
-      <p className="text-[11px] uppercase text-neutral-400">{label}</p>
+      <p className="text-xs uppercase text-neutral-500">{label}</p>
       <select
         value={selectedId ?? ''}
         onChange={(e) => onSelect(Number(e.target.value))}
