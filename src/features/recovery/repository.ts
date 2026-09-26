@@ -8,14 +8,15 @@ export function getTodayCheckIn() {
   return db.dailyCheckIns.where('date').equals(today()).first()
 }
 
-export async function upsertCheckIn(
-  changes: Partial<Pick<DailyCheckIn, 'sleepHours' | 'energy' | 'soreness'>>,
-) {
-  const date = today()
-  const existing = await db.dailyCheckIns.where('date').equals(date).first()
-  if (existing) {
-    await db.dailyCheckIns.update(existing.id!, changes)
-  } else {
-    await db.dailyCheckIns.add({ date, ...changes })
-  }
+/** Transactional so quick successive taps (sleep, energy, soreness) can't create duplicate rows for today. */
+export function upsertCheckIn(changes: Partial<Pick<DailyCheckIn, 'sleepHours' | 'energy' | 'soreness'>>) {
+  return db.transaction('rw', db.dailyCheckIns, async () => {
+    const date = today()
+    const existing = await db.dailyCheckIns.where('date').equals(date).first()
+    if (existing) {
+      await db.dailyCheckIns.update(existing.id!, changes)
+    } else {
+      await db.dailyCheckIns.add({ date, ...changes })
+    }
+  })
 }

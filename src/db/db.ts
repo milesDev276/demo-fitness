@@ -2,6 +2,7 @@ import Dexie, { type EntityTable } from 'dexie'
 import { exerciseSeed } from '../data/exercises'
 import type {
   BodyLog,
+  BodyPhoto,
   DailyCheckIn,
   Exercise,
   NutritionLog,
@@ -20,6 +21,7 @@ export class FitFlowDatabase extends Dexie {
   bodyLogs!: EntityTable<BodyLog, 'id'>
   dailyCheckIns!: EntityTable<DailyCheckIn, 'id'>
   nutritionLogs!: EntityTable<NutritionLog, 'id'>
+  bodyPhotos!: EntityTable<BodyPhoto, 'id'>
 
   constructor() {
     super('fitflow')
@@ -33,6 +35,16 @@ export class FitFlowDatabase extends Dexie {
       bodyLogs: '++id, date',
       dailyCheckIns: '++id, date',
       nutritionLogs: '++id, date',
+    })
+
+    // Phase 5: index weekStart/scheduledDate so the weekly planner can look up generated plans.
+    this.version(2).stores({
+      workoutPlans: '++id, name, createdAt, weekStart, scheduledDate',
+    })
+
+    // Phase 6: body progress photos.
+    this.version(3).stores({
+      bodyPhotos: '++id, date, category',
     })
 
     this.on('populate', () => {

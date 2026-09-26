@@ -1,8 +1,17 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
 import { db } from '../../db/db'
+import { safely } from '../../utils/safely'
 import type { WorkoutSession } from '../../db/types'
-import { cancelSession, completeSession, getSessionSetsByExercise, getPlan } from './repository'
+import {
+  cancelSession,
+  completeSession,
+  getSession,
+  getSessionSetsByExercise,
+  getSessionSummary,
+  getPlan,
+  type SessionSummary,
+} from './repository'
 import { ExerciseLogger } from './ExerciseLogger'
 
 interface ActiveSessionProps {
@@ -10,8 +19,14 @@ interface ActiveSessionProps {
   onEnded: () => void
 }
 
+interface CompletionInfo {
+  durationMinutes: number
+  summary: SessionSummary
+}
+
 export function ActiveSession({ session, onEnded }: ActiveSessionProps) {
   const [activeExerciseId, setActiveExerciseId] = useState<number | null>(null)
+  const [completion, setCompletion] = useState<CompletionInfo | null>(null)
 
   const plan = useLiveQuery(() => getPlan(session.planId), [session.planId])
   const setsByExercise = useLiveQuery(
@@ -38,15 +53,44 @@ export function ActiveSession({ session, onEnded }: ActiveSessionProps) {
   }
 
   async function handleComplete() {
-    if (!confirm('Complete this workout?')) return
-    await completeSession(session.id!)
-    onEnded()
+    await safely(async () => {
+      await completeSession(session.id!)
+      const [updated, summary] = await Promise.all([getSession(session.id!), getSessionSummary(session.id!)])
+      setCompletion({ durationMinutes: updated?.durationMinutes ?? 0, summary })
+    }, "We couldn't finish this workout. Please try again.")
   }
 
   async function handleCancel() {
     if (!confirm('Cancel this workout? Logged sets will be deleted.')) return
-    await cancelSession(session.id!)
-    onEnded()
+    if (await safely(() => cancelSession(session.id!), "We couldn't cancel this workout. Please try again.")) onEnded()
+  }
+
+  if (completion) {
+    return (
+      <div className="flex flex-col items-center p-4 pb-24 text-center">
+        <p className="mt-8 text-[11px] font-semibold uppercase tracking-wide text-neutral-400">Workout Complete</p>
+        <h1 className="mt-1 text-2xl font-semibold text-neutral-900 dark:text-white">{session.planName}</h1>
+
+        <div className="mt-8 flex w-full max-w-xs justify-between">
+          <CompletionStat label="Duration" value={`${completion.durationMinutes} min`} />
+          <CompletionStat label="Exercises" value={String(completion.summary.exerciseCount)} />
+          <CompletionStat label="Sets" value={String(completion.summary.setCount)} />
+        </div>
+
+        <div className="mt-8">
+          <p className="text-3xl font-bold text-neutral-900 dark:text-white">{completion.summary.volumeKg} kg</p>
+          <p className="mt-1 text-[11px] uppercase text-neutral-400">Total Volume</p>
+        </div>
+
+        <button
+          type="button"
+          onClick={onEnded}
+          className="mt-10 w-full max-w-xs rounded-xl bg-neutral-900 py-4 text-base font-semibold text-white active:bg-neutral-800 dark:bg-white dark:text-neutral-900"
+        >
+          Finish
+        </button>
+      </div>
+    )
   }
 
   return (
@@ -60,6 +104,12 @@ export function ActiveSession({ session, onEnded }: ActiveSessionProps) {
       <p className="text-sm text-neutral-500 dark:text-neutral-400">
         Started {new Date(session.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
       </p>
+
+      {exercises && !plan && (
+        <p className="mt-6 text-center text-sm text-neutral-400">
+          This workout's plan is no longer available. You can still complete or cancel this session.
+        </p>
+      )}
 
       <div className="mt-4 space-y-2">
         {plan?.exercises
@@ -101,6 +151,15 @@ export function ActiveSession({ session, onEnded }: ActiveSessionProps) {
       >
         Complete Workout
       </button>
+    </div>
+  )
+}
+
+function CompletionStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-lg font-semibold text-neutral-900 dark:text-white">{value}</p>
+      <p className="text-[11px] uppercase text-neutral-400">{label}</p>
     </div>
   )
 }

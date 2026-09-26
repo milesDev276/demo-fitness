@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { safely } from '../../utils/safely'
 import { getTodayBodyLog, listRecentBodyLogs, upsertBodyLog } from './repository'
 
 function formatDate(date: string) {
@@ -23,18 +24,19 @@ export function BodyCard() {
   async function commitWeight() {
     const value = weight === '' ? undefined : Number(weight)
     if (value !== undefined && Number.isNaN(value)) return
-    await upsertBodyLog({ weightKg: value })
-    setWeightOverride(null)
+    if (await safely(() => upsertBodyLog({ weightKg: value }))) setWeightOverride(null)
   }
 
   async function commitWaist() {
     const value = waist === '' ? undefined : Number(waist)
     if (value !== undefined && Number.isNaN(value)) return
-    await upsertBodyLog({ waistCm: value })
-    setWaistOverride(null)
+    if (await safely(() => upsertBodyLog({ waistCm: value }))) setWaistOverride(null)
   }
 
   const olderEntries = recent?.filter((log) => log.id !== todayLog?.id) ?? []
+  // Remember the last logged values so today's entry starts from a familiar number.
+  const lastWeight = olderEntries.find((log) => log.weightKg !== undefined)?.weightKg
+  const lastWaist = olderEntries.find((log) => log.waistCm !== undefined)?.waistCm
 
   return (
     <section className="rounded-xl border border-neutral-200 p-4 dark:border-neutral-800">
@@ -50,7 +52,7 @@ export function BodyCard() {
             value={weight}
             onChange={(e) => setWeightOverride(e.target.value)}
             onBlur={commitWeight}
-            placeholder="—"
+            placeholder={lastWeight !== undefined ? String(lastWeight) : '—'}
             className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-lg font-semibold text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
           />
         </label>
@@ -63,7 +65,7 @@ export function BodyCard() {
             value={waist}
             onChange={(e) => setWaistOverride(e.target.value)}
             onBlur={commitWaist}
-            placeholder="optional"
+            placeholder={lastWaist !== undefined ? String(lastWaist) : 'optional'}
             className="mt-1 w-full rounded-lg border border-neutral-200 px-3 py-2 text-lg font-semibold text-neutral-900 dark:border-neutral-800 dark:bg-neutral-900 dark:text-white"
           />
         </label>

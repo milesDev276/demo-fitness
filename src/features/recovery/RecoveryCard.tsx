@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { safely } from '../../utils/safely'
 import { getTodayCheckIn, upsertCheckIn } from './repository'
 
 const SCALE = Array.from({ length: 10 }, (_, i) => i + 1)
@@ -13,8 +14,7 @@ export function RecoveryCard() {
   async function commitSleep() {
     const value = sleep === '' ? undefined : Number(sleep)
     if (value !== undefined && Number.isNaN(value)) return
-    await upsertCheckIn({ sleepHours: value })
-    setSleepOverride(null)
+    if (await safely(() => upsertCheckIn({ sleepHours: value }))) setSleepOverride(null)
   }
 
   return (
@@ -42,8 +42,10 @@ export function RecoveryCard() {
             <button
               key={value}
               type="button"
-              onClick={() => upsertCheckIn({ energy: value })}
-              className={`h-8 w-8 rounded-full text-xs font-semibold ${
+              onClick={() => safely(() => upsertCheckIn({ energy: value }))}
+              aria-pressed={checkIn?.energy === value}
+              aria-label={`Energy ${value} out of 10`}
+              className={`h-10 w-10 rounded-full text-sm font-semibold ${
                 checkIn?.energy === value
                   ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
                   : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
@@ -62,8 +64,10 @@ export function RecoveryCard() {
             <button
               key={value}
               type="button"
-              onClick={() => upsertCheckIn({ soreness: value })}
-              className={`h-8 w-8 rounded-full text-xs font-semibold ${
+              onClick={() => safely(() => upsertCheckIn({ soreness: value }))}
+              aria-pressed={checkIn?.soreness === value}
+              aria-label={`Soreness ${value} out of 10`}
+              className={`h-10 w-10 rounded-full text-sm font-semibold ${
                 checkIn?.soreness === value
                   ? 'bg-neutral-900 text-white dark:bg-white dark:text-neutral-900'
                   : 'bg-neutral-100 text-neutral-600 dark:bg-neutral-800 dark:text-neutral-300'
